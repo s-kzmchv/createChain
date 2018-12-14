@@ -3,6 +3,16 @@
 #include <stdio.h>
 #include <windows.h>
 #include <Wincrypt.h>
+#include <string.h>
+#include <stdio.h>
+#include <conio.h>
+#include <tchar.h>
+#include <windows.h>
+#include <wincrypt.h>
+#include <iostream>
+#include <bitset>
+#include <sstream>
+#include <fstream>
 
 void MyHandleError(char *s);
 
@@ -15,7 +25,6 @@ int main(void)
     HCERTCHAINENGINE         hChainEngine;
     CERT_CHAIN_ENGINE_CONFIG ChainConfig;
     PCCERT_CHAIN_CONTEXT     pChainContext;
-    PCCERT_CHAIN_CONTEXT     pDupContext;
     HCERTSTORE               hCertStore;
     PCCERT_CONTEXT           pCertContext = NULL;
     CERT_ENHKEY_USAGE        EnhkeyUsage;
@@ -29,8 +38,17 @@ int main(void)
 //---------------------------------------------------------
 // Initialize data structures.
 
-    if(!(pszNameString=(LPWSTR)malloc(256)))
-        MyHandleError("Memory allocation failed.");
+    /*if(!(pszNameString=(LPWSTR)malloc(256)))
+        MyHandleError("Memory allocation failed.");*/
+
+    char* nameOfCert = "SUAI_au14_28";
+
+    const size_t cSize = strlen(nameOfCert)+1;
+    wchar_t wc[cSize];
+    mbstowcs (wc, nameOfCert, cSize);
+
+    //pszNameString = "SUAI_au14_28";
+
     EnhkeyUsage.cUsageIdentifier = 0;
     EnhkeyUsage.rgpszUsageIdentifier=NULL;
     CertUsage.dwType = USAGE_MATCH_TYPE_AND;
@@ -82,10 +100,29 @@ int main(void)
 // Loop through the certificates in the store,
 // and create a chain for each.
 
-    while(pCertContext = CertEnumCertificatesInStore(
+
+
+
+    if(pCertContext = CertFindCertificateInStore(
+            hCertStore,
+            PKCS_7_ASN_ENCODING | X509_ASN_ENCODING,
+            0,
+            CERT_FIND_SUBJECT_STR,
+            wc,
+            NULL))
+    {
+        printf(TEXT("The signer's certificate was found.\n"));
+    }
+    else
+    {
+        MyHandleError( TEXT("Signer certificate not found."));
+    }
+
+
+    /*while(pCertContext = CertEnumCertificatesInStore(
             hCertStore,
             pCertContext))
-    {
+    {*/
 //-------------------------------------------------------------------
 // Get and display the name of subject of the certificate.
 
@@ -128,6 +165,8 @@ int main(void)
         {
             MyHandleError("The chain could not be created.");
         }
+
+
 
 //---------------------------------------------------------------
 // Display some of the contents of the chain.
@@ -187,6 +226,7 @@ int main(void)
         } // End switch
 
         printf("\nInfo status for the chain:\n");
+
         switch(pChainContext->TrustStatus.dwInfoStatus)
         {
             case 0:
@@ -212,41 +252,37 @@ int main(void)
                 break;
         } // end switch
 
-//-------------------------------------------------------------------
-// Duplicate the original chain.
-        if(pDupContext = CertDuplicateCertificateChain(
-                pChainContext ))
-        {
-            printf("Duplicated the chain.\n");
-        }
-        else
-        {
-            printf("Duplication failed.\n");
-        }
-//-------------------------------------------------------------------
-// Free both chains.
+// Free chain.
 
-        CertFreeCertificateChain(pDupContext);
-        printf("The duplicate chains is free.\n");
         CertFreeCertificateChain(pChainContext);
-        printf("The Original chain is free.\n");
-        printf("\nPress Enter to continue.");
-        getchar();
-    } // end while loop
+        printf("The chain is free.\n");
+        /*printf("\nPress Enter to continue.");
+        getchar();*/
+    //} // end while loop
 
-    printf("\nThere are no more certificates in the store. \n");
+    //printf("\nThere are no more certificates in the store. \n");
 
 //---------------------------------------------------------
 // Free the chain engine.
-
     CertFreeCertificateChainEngine(hChainEngine);
     printf("The chain engine has been released.\n");
 
-// Free memory for pszNameString.
-    if(pszNameString)
-        free(pszNameString);
 
-    printf("The demo program ran to completion without error.\n");
+    if(pCertContext)
+    {
+        CertFreeCertificateContext(pCertContext);
+    }
+
+    if(hCertStore)
+    {
+        CertCloseStore(hCertStore, CERT_CLOSE_STORE_CHECK_FLAG);
+        hCertStore = NULL;
+    }
+
+// Free memory for pszNameString.
+    //if(pszNameString)
+        //free(pszNameString);
+
 
 
 } // end main
